@@ -248,6 +248,73 @@ body{
 }
 
 /* =========================================
+   MOBILE - CONTROLES COMPACTOS
+========================================= */
+
+@media(max-width:768px){
+
+  .controls-card{
+
+    display:grid;
+
+    grid-template-columns:1fr 1fr;
+
+    gap:8px;
+
+    padding:10px;
+  }
+
+  #selectModalidade{
+
+    grid-column:1;
+    width:100%;
+    min-width:unset;
+  }
+
+  #selectSemana{
+
+    grid-column:2;
+    width:100%;
+    min-width:unset;
+  }
+
+  #searchProf{
+
+    grid-column:1;
+
+    width:100%;
+    min-width:unset;
+  }
+
+  .btn-pdf{
+
+    grid-column:2;
+
+    width:100%;
+
+    min-width:unset;
+
+    padding:0 10px;
+
+    font-size:12px;
+
+    height:44px;
+  }
+
+  select,
+  .search-box{
+
+    min-width:unset;
+
+    width:100%;
+
+    height:44px;
+
+    font-size:13px;
+  }
+}
+
+/* =========================================
    INPUTS E BOTÕES
 ========================================= */
 
@@ -2326,25 +2393,60 @@ function abrirRelatorioDia(dia){
 }
   
 function criarBotoesDias() {
+
   const sem = document.getElementById('selectSemana').value;
   const dias = semanasAgrupadas[sem].dias;
 
   let html = `
-    <div style="padding:10px;display:flex;gap:10px;flex-wrap:wrap;">
+    <div style="
+      padding:10px;
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      justify-content:center;
+    ">
   `;
 
   Object.keys(dias).forEach(dia => {
+
+    const [d,m,a] = dia.split('/');
+    const dataObj = new Date(a, m - 1, d);
+
+    // 🔥 REMOVE SÁBADO
+    if(dataObj.getDay() === 6){
+      return;
+    }
+
     html += `
       <button onclick="abrirRelatorioDia('${dia}')"
-        style="padding:10px;background:#2e7d32;color:white;border:none;border-radius:6px;cursor:pointer;">
+        style="
+          padding:9px 12px;
+          background:#2e7d32;
+          color:white;
+          border:none;
+          border-radius:10px;
+          cursor:pointer;
+          font-size:12px;
+          font-weight:600;
+        ">
         📅 ${dia}
       </button>
     `;
   });
 
+  // 🔥 BOTÃO SEMANA INTEIRA NO FINAL
   html += `
       <button onclick="abrirRelatorioSemana()"
-        style="padding:10px;background:#d32f2f;color:white;border:none;border-radius:6px;cursor:pointer;">
+        style="
+          padding:9px 12px;
+          background:#d32f2f;
+          color:white;
+          border:none;
+          border-radius:10px;
+          cursor:pointer;
+          font-size:12px;
+          font-weight:700;
+        ">
         📊 Semana inteira
       </button>
     </div>
