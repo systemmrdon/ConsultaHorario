@@ -306,7 +306,48 @@ select:focus,
   transform:translateY(-2px);
 }
 
-```css
+#painelAlteracoes,
+#painelVagas{
+
+  background:
+    rgba(15,23,42,0.92) !important;
+
+  color:white;
+
+  border:none !important;
+
+  border-radius:24px !important;
+
+  backdrop-filter:blur(18px);
+
+  box-shadow:var(--shadow);
+}
+
+  #painelAlteracoes pre,
+#painelVagas pre{
+
+  color:#e2e8f0;
+
+  line-height:1.7;
+}
+
+#painelAlteracoes button,
+#painelVagas button{
+
+  border:none !important;
+
+  border-radius:12px !important;
+
+  font-weight:700;
+
+  transition:0.25s ease;
+}
+
+#painelAlteracoes button:hover,
+#painelVagas button:hover{
+
+  transform:translateY(-2px);
+}
 /* =========================================
    TABELA RESPONSIVA PREMIUM
    DESKTOP SEM SCROLL HORIZONTAL
@@ -317,7 +358,7 @@ select:focus,
 
   width:100%;
 
-  max-width:1920px;
+  max-width:100%;
 
   margin:18px auto;
 
