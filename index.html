@@ -616,7 +616,7 @@ th.time-col{
 }
 
 /* =========================================
-   DIVISÃO DE DIA
+   DIVISÃO DIA
 ========================================= */
 
 .day-divider td{
@@ -638,11 +638,49 @@ th.time-col{
 
   padding:14px;
 
+  text-align:center;
+
   position:sticky;
 
   left:0;
 
   z-index:50;
+}
+
+/* =========================================
+   MOBILE - DIA FIXO NA TELA
+========================================= */
+
+@media(max-width:768px){
+
+  .day-divider td{
+
+    position:sticky;
+
+    left:0;
+
+    top:0;
+
+    z-index:9997;
+
+    width:100vw !important;
+
+    min-width:100vw !important;
+
+    max-width:100vw !important;
+
+    display:table-cell;
+
+    text-align:center;
+
+    font-size:12px;
+
+    padding:12px 8px;
+
+    box-shadow:
+      0 4px 10px rgba(0,0,0,0.25);
+  }
+
 }
 
 /* =========================================
