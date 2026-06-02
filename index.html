@@ -12,6 +12,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <style>
 
@@ -1238,9 +1239,15 @@ EVENTOS:{
 };
 
 async function carregarEventos(){
+
   const url = `https://docs.google.com/spreadsheets/d/${SHEETS.EVENTOS.id}/export?format=csv&gid=${SHEETS.EVENTOS.gid}`;
+
   const res = await fetch(url);
+
   eventosGlobais = parseCSV(await res.text());
+
+  console.log("EVENTOS CARREGADOS:");
+  console.table(eventosGlobais);
 }
 
 function horaParaMinutos(h){
@@ -1248,7 +1255,10 @@ function horaParaMinutos(h){
   return hh * 60 + mm;
 }
   
-let dadosGlobais=[],turmasDaPlanilha=[],semanasAgrupadas={};
+let dadosGlobais = [];
+let turmasDaPlanilha = [];
+let semanasAgrupadas = {};
+let eventosGlobais = [];
 
   function isSemanaPassada(dataStr){
   const [d,m,a] = dataStr.split('/');
@@ -1264,6 +1274,51 @@ let dadosGlobais=[],turmasDaPlanilha=[],semanasAgrupadas={};
   return data < segundaAtual;
 }
 
+  function obterColunasEvento(evento, turmasVisiveis) {
+
+    const alvo = evento.alvo
+        .split(',')
+        .map(t => t.trim());
+
+    return turmasVisiveis
+        .map((turma, indice) => ({
+            turma,
+            indice
+        }))
+        .filter(item =>
+            alvo.includes(item.turma)
+        );
+}
+
+  function saoContiguas(colunas) {
+
+    if (colunas.length <= 1) return true;
+
+    for (let i = 1; i < colunas.length; i++) {
+
+        if (
+            colunas[i].indice !==
+            colunas[i - 1].indice + 1
+        ) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+  function calcularRowspanEvento(
+    horaInicio,
+    horaFim,
+    horarios
+) {
+
+    const inicio = horarios.indexOf(horaInicio);
+    const fim = horarios.indexOf(horaFim);
+
+    return (fim - inicio);
+}
+  
 function limparPainelAlteracoes(){
   document.getElementById("conteudoAlteracoes").innerText = "";
   document.getElementById("painelAlteracoes").style.display = "none";
@@ -1313,55 +1368,113 @@ function trocarSemana(){
   }, 50);
 }
 
-function gerarMapaDados(dados) {
+function deveEntrarNoSnapshot(dia){
+
+  const semanaSelecionada =
+    document.getElementById('selectSemana').value;
+
+  const semanaAtual = getSemanaAtual();
+
+  // somente semana atual
+  if(semanaSelecionada !== semanaAtual){
+    return false;
+  }
+
+  const hoje = new Date();
+
+  const [d,m,a] = dia.split('/');
+
+  const dataLinha =
+    new Date(a,m-1,d);
+
+  const hojeZero =
+    new Date(
+      hoje.getFullYear(),
+      hoje.getMonth(),
+      hoje.getDate()
+    );
+
+  const sabado =
+    new Date(hojeZero);
+
+  const diaSemana =
+    hojeZero.getDay();
+
+  const diasAteSabado =
+    (6 - diaSemana + 7) % 7;
+
+  sabado.setDate(
+    hojeZero.getDate() + diasAteSabado
+  );
+
+  return (
+    dataLinha >= hojeZero &&
+    dataLinha <= sabado
+  );
+}
+  
+function gerarMapaDados(dados){
 
   const mapa = {};
+
   let ultimoDia = "";
 
-  for (let i = 1; i < dados.length; i++) {
+  for(let i=1;i<dados.length;i++){
 
     const linha = dados[i];
 
-    if (linha[0]) ultimoDia = linha[0];
+    if(linha[0]){
+      ultimoDia = linha[0];
+    }
+
     const dia = ultimoDia;
 
-    if (!dia) continue;
+if(!dia){
+  continue;
+}
+
+if(!deveEntrarNoSnapshot(dia)){
+  continue;
+}
 
     const horario = (linha[1] || "").trim();
+
     const horarioNorm = normalizarTexto(horario);
 
-    // ignora lixo
-    if (
+    if(
       !horario ||
       horarioNorm.includes("INTERVALO") ||
       horarioNorm.includes("[+]") ||
       horarioNorm.includes("*") ||
       horarioNorm.includes("[R]")
-    ) continue;
+    ){
+      continue;
+    }
 
-    for (let j = 2; j < linha.length; j++) {
+    for(let j=2;j<linha.length;j++){
 
       const turma = (dados[0][j] || "").trim();
-      if (!turma) continue;
+
+      if(!turma){
+        continue;
+      }
 
       const valor = (linha[j] || "").trim();
 
-      const chave = `${normalizarTexto(dia)}|${horarioNorm}|${normalizarTexto(turma)}`;
+      const chave =
+        `${normalizarTexto(dia)}|${horarioNorm}|${normalizarTexto(turma)}`;
 
-      mapa[chave] = {
-        dia,
-        horario,
-        turma,
-        valorOriginal: valor,
-        valorNormalizado: normalizarTexto(valor)
-      };
+      mapa[chave] = normalizarTexto(valor);
     }
   }
-
+  
+console.log("LINHAS PLANILHA:", dados.length);
+console.log("REGISTROS MAPA:", Object.keys(mapa).length);
+  
   return mapa;
 }
 
-function compararMapas(mapaAntigo, mapaNovo) {
+function compararMapas(mapaAntigo,mapaNovo){
 
   const alteracoes = [];
 
@@ -1370,45 +1483,52 @@ function compararMapas(mapaAntigo, mapaNovo) {
     ...Object.keys(mapaNovo)
   ]);
 
-  todasChaves.forEach(chave => {
+  todasChaves.forEach(chave=>{
 
     const antigo = mapaAntigo[chave];
     const novo = mapaNovo[chave];
 
-    // 🔴 REMOVIDO
-    if (antigo && !novo) {
+    if(antigo !== novo){
+
+      const partes = chave.split("|");
+
       alteracoes.push({
-        tipo: "REMOVIDO",
-        ...antigo,
-        antes: antigo.valorOriginal,
-        depois: "(vazio)"
+        dia: partes[0],
+        horario: partes[1],
+        turma: partes[2],
+        antes: antigo || "(vazio)",
+        depois: novo || "(vazio)"
       });
-      return;
+
     }
 
-    // 🟢 ADICIONADO
-    if (!antigo && novo) {
-      alteracoes.push({
-        tipo: "ADICIONADO",
-        ...novo,
-        antes: "(vazio)",
-        depois: novo.valorOriginal
-      });
-      return;
-    }
-
-    // 🟡 ALTERADO
-    if (antigo.valorNormalizado !== novo.valorNormalizado) {
-      alteracoes.push({
-        tipo: "ALTERADO",
-        dia: novo.dia,
-        horario: novo.horario,
-        turma: novo.turma,
-        antes: antigo.valorOriginal,
-        depois: novo.valorOriginal
-      });
-    }
   });
+
+  let contador = 0;
+
+todasChaves.forEach(chave => {
+
+  const antigo = mapaAntigo[chave];
+  const novo = mapaNovo[chave];
+
+  if (antigo !== novo) {
+
+    contador++;
+
+    console.log(
+      "DIFERENÇA",
+      chave,
+      antigo,
+      novo
+    );
+  }
+
+});
+
+console.log(
+  "TOTAL DIFERENÇAS:",
+  contador
+);
 
   return alteracoes;
 }
@@ -1485,14 +1605,29 @@ function verificarMudancaAoAbrir({
   getModalidade
 }) {
 
+  console.log(
+  "DADOS RECEBIDOS:",
+  dados.length
+);
+  
   const sem = getSemana();
   const mod = getModalidade();
+
+    console.log("===== SNAPSHOT =====");
+console.log("MODALIDADE:", mod);
+console.log("SEMANA:", sem);
+console.log("CHAVE:", `snapshot_${mod}_${sem}`);
 
   const chave = `snapshot_${mod}_${sem}`;
 
   const antigoRaw = localStorage.getItem(chave);
 
   const mapaNovo = gerarMapaDados(dados);
+
+    console.log(
+  "REGISTROS MAPA:",
+  Object.keys(mapaNovo).length
+);
 
   // 🔥 PRIMEIRO ACESSO DA SEMANA
   if (!antigoRaw) {
@@ -1538,15 +1673,47 @@ function verificarMudancaAoAbrir({
 
   const mapaAntigo = snapshotAntigo.mapa;
 
+  console.log(
+  "EXEMPLO MAPA ANTIGO:",
+  Object.entries(mapaAntigo).slice(0,5)
+);
+
+console.log(
+  "EXEMPLO MAPA NOVO:",
+  Object.entries(mapaNovo).slice(0,5)
+);
+
+  console.log(
+  "MAPA ANTIGO:",
+  Object.keys(mapaAntigo).length
+);
+
+console.log(
+  "MAPA NOVO:",
+  Object.keys(mapaNovo).length
+);
+
   const alteracoes = compararMapas(
     mapaAntigo,
     mapaNovo
   );
 
-  // 🔥 ignora semanas passadas
-  const filtradas = alteracoes.filter(
-    a => !isSemanaPassada(a.dia)
+  console.log(
+  "ALTERAÇÕES ENCONTRADAS:",
+  alteracoes.length
+);
+
+if(alteracoes.length){
+
+  console.log(
+    "PRIMEIRA ALTERAÇÃO:",
+    alteracoes[0]
   );
+
+}
+
+  // 🔥 ignora semanas passadas
+  const filtradas = alteracoes;
 
   if (filtradas.length > 0) {
 
@@ -1565,21 +1732,77 @@ function verificarMudancaAoAbrir({
   }));
 }
 
-function mostrarAvisoAlteracoesRobusto(lista) {
+function mostrarAvisoAlteracoesRobusto(alteracoes) {
 
-  let texto = "⚠️ ALTERAÇÕES DETECTADAS:\n\n";
+    if (!Array.isArray(alteracoes) || alteracoes.length === 0) {
+        return;
+    }
 
-  lista.forEach(item => {
+    let html = `
+        <div style="max-height:500px;overflow-y:auto;text-align:left;">
+            <p>
+                <strong>Foram encontradas ${alteracoes.length} alteração(ões) nos horários.</strong>
+            </p>
+            <hr>
+    `;
 
-    texto += `📅 Dia: ${item.dia}\n`;
-    texto += `🏫 Turma: ${item.turma}\n`;
-    texto += `⏰ Horário: ${item.horario}\n`;
-    texto += `🔎 Tipo: ${item.tipo}\n`;
-    texto += `➡️ ${item.antes} → ${item.depois}\n\n`;
-  });
+    alteracoes.forEach((alt, index) => {
 
-  document.getElementById("conteudoAlteracoes").innerText = texto;
-  document.getElementById("painelAlteracoes").style.display = "block";
+        html += `
+            <div style="
+                margin-bottom:15px;
+                padding:10px;
+                border:1px solid #ddd;
+                border-radius:8px;
+                background:#f8f9fa;
+            ">
+                <div>
+                    <strong>${index + 1}. ${alt.turma || 'Turma não informada'}</strong>
+                </div>
+
+                <div>
+                    📅 ${alt.dia || '-'}
+                </div>
+
+                <div>
+                    🕒 ${alt.horario || '-'}
+                </div>
+
+                <div style="
+                    margin-top:8px;
+                    padding:8px;
+                    background:#ffe5e5;
+                    border-radius:4px;
+                ">
+                    <strong>ANTES:</strong><br>
+                    ${alt.antes || '(vazio)'}
+                </div>
+
+                <div style="
+                    margin-top:6px;
+                    padding:8px;
+                    background:#e5ffe5;
+                    border-radius:4px;
+                ">
+                    <strong>DEPOIS:</strong><br>
+                    ${alt.depois || '(vazio)'}
+                </div>
+            </div>
+        `;
+    });
+
+    html += '</div>';
+
+    Swal.fire({
+        icon: 'warning',
+        title: 'Alterações Detectadas',
+        html: html,
+        width: 900,
+        confirmButtonText: 'Entendi'
+    });
+
+    console.log('ALTERAÇÕES DETECTADAS:', alteracoes);
+    console.table(alteracoes);
 }
 
   function fecharPainel(){
@@ -1687,43 +1910,166 @@ async function init(){
 }, 100);
 }
 
-function getEventoGeral(dia, horario){
+function getEventosDaLinha(dia, horario, turmasVisiveis){
 
-  if(!horario || !horario.includes(" - ")) return null;
+  if(!horario || !horario.includes(" - "))
+    return [];
 
   const [hIniStr, hFimStr] = horario.split(" - ");
 
   const hIniLinha = horaParaMinutos(hIniStr);
   const hFimLinha = horaParaMinutos(hFimStr);
 
-  for(let i = 1; i < eventosGlobais.length; i++){
+  const modalidadeAtual =
+    document.getElementById(
+      "selectModalidade"
+    ).value;
+
+  const eventos = [];
+
+  for(let i=1;i<eventosGlobais.length;i++){
 
     const ev = eventosGlobais[i];
 
     const modalidade = ev[0];
-    const tipo = ev[1];
-    const data = ev[3];
-    const hInicio = horaParaMinutos(ev[4]);
-    const hFim = horaParaMinutos(ev[5]);
-    const desc = ev[6];
+    const tipo       = ev[1];
+    const alvo       = ev[2];
+    const data       = ev[3];
+    const hInicio    = horaParaMinutos(ev[4]);
+    const hFim       = horaParaMinutos(ev[5]);
+    const descricao  = ev[6];
 
-    const modAtual = document.getElementById('selectModalidade').value;
+    if(
+      normalizarTexto(modalidade)
+      !==
+      normalizarTexto(modalidadeAtual)
+    ){
+      continue;
+    }
 
-    if(modalidade !== modAtual) continue;
-    if(tipo !== "GERAL") continue;
-    if(data !== dia) continue;
+    if(data !== dia){
+      continue;
+    }
 
-    // 🔥 REGRA CORRETA (INTERSEÇÃO DE INTERVALO)
     const dentro =
-      hIniLinha < hFim && hFimLinha > hInicio;
+      hIniLinha < hFim &&
+      hFimLinha > hInicio;
+
+    if(!dentro){
+      continue;
+    }
+
+    let colunas = [];
+
+    if(
+      normalizarTexto(alvo) === "TODOS"
+    ){
+
+      colunas =
+        turmasVisiveis.map(
+          (t,idx)=>({
+            turma:t,
+            indice:idx
+          })
+        );
+
+    }else{
+
+      const listaAlvos =
+        alvo
+          .split(",")
+          .map(x=>x.trim());
+
+      colunas =
+        turmasVisiveis
+          .map((turma,indice)=>({
+            turma,
+            indice
+          }))
+          .filter(item=>
+            listaAlvos.some(
+              a=>
+                normalizarTexto(a)
+                ===
+                normalizarTexto(item.turma)
+            )
+          );
+    }
+
+    eventos.push({
+
+      descricao,
+
+      tipo,
+
+      alvo,
+
+      inicio:hInicio,
+
+      fim:hFim,
+
+      colunas
+
+    });
+  }
+
+  return eventos;
+}
+
+  function calcularRowspanEventoReal(
+  dia,
+  evento,
+  linhas
+){
+
+  let total = 0;
+
+  for(let i=0;i<linhas.length;i++){
+
+    const horario = linhas[i][1];
+
+    if(
+      !horario ||
+      !horario.includes(" - ")
+    ){
+      continue;
+    }
+
+    const [ini,fim] =
+      horario.split(" - ");
+
+    const hIni =
+      horaParaMinutos(ini);
+
+    const hFim =
+      horaParaMinutos(fim);
+
+    const dentro =
+      hIni < evento.fim &&
+      hFim > evento.inicio;
 
     if(dentro){
-      return desc || "EVENTO";
+      total++;
     }
   }
 
-  return null;
+  return total;
 }
+
+  function existeEventoNaColuna(
+  eventos,
+  indiceColuna
+){
+
+  return eventos.find(ev=>
+
+    ev.colunas.some(
+      c=>c.indice===indiceColuna
+    )
+
+  );
+}
+  
   
 function getCursoInfo(t){
 t=t.toUpperCase();
@@ -1954,54 +2300,12 @@ function renderizarTabela(){
             const r = linhas[i];
             const horario = r[1];
 
-            const eventoGeral = getEventoGeral(dia, horario);
-
-if(eventoGeral){
-
-    let inicio = i;
-    let fim = i;
-
-    const inicioMin = horaParaMinutos(linhas[inicio][1].split(" - ")[0]);
-
-    // 🔥 VAI ATÉ O FINAL REAL DO EVENTO (ex: 18:20)
-    while(fim + 1 < linhas.length){
-
-        const prox = linhas[fim + 1];
-        const horarioProx = prox[1];
-
-        if(!horarioProx) break;
-
-        const proxMin = horaParaMinutos(horarioProx.split(" - ")[0]);
-
-        const proxEvento = getEventoGeral(dia, horarioProx);
-
-        // 🔥 REGRA: continua se ainda estiver dentro do evento
-        if(proxEvento === eventoGeral){
-            fim++;
-        }
-        // 🔥 mantém INTERVALO dentro do bloco
-        else if(horarioProx.toUpperCase().includes("INTERVALO")){
-            fim++;
-        }
-        else{
-            break;
-        }
-    }
-
-    const totalLinhas = (fim - inicio) + 1;
-
-    html += `
-      <tr class="evento-geral">
-        <td class="time-col">${linhas[inicio][1]}</td>
-        <td rowspan="${totalLinhas}" colspan="${turmasAtivas.length}" class="evento-bloco">
-          ${eventoGeral}
-        </td>
-      </tr>
-    `;
-
-    i = fim + 1;
-    continue;
-            }
+            const eventosLinha =
+  getEventosDaLinha(
+    dia,
+    horario,
+    turmasAtivas
+  );
 
             // 🔹 LINHA NORMAL (ORIGINAL PRESERVADA)
             const isInt = r[1] && r[1].toUpperCase().includes("INTERVALO");
@@ -2010,33 +2314,102 @@ if(eventoGeral){
             html += `<tr class="${isInt ? 'intervalo' : ''} ${linhaVazia ? 'linha-vazia' : ''}">
                         <td class="time-col">${r[1]}</td>`;
 
-            turmasAtivas.forEach(t => {
+            for(let col=0; col<turmasAtivas.length; col++){
 
-                const idx = dadosGlobais[0].indexOf(t);
-                let val = (r[idx] || "").trim();
+  const turma =
+    turmasAtivas[col];
 
-                let classesExtras = [];
-                const valNorm = normalizarTexto(val);
+  const evento =
+    existeEventoNaColuna(
+      eventosLinha,
+      col
+    );
 
-                regrasDestaque.forEach(regra => {
-                    if (regra.match(valNorm)) {
-                        classesExtras.push(regra.classe);
-                    }
-                });
+  if(evento){
 
-                if (
-                    val.includes("[+]") ||
-                    val.includes("*") ||
-                    val.includes("[R]") ||
-                    valNorm.includes("INTERVALO")
-                ) {
-                    classesExtras.push("marcacao-extra");
-                }
+    const primeiraColuna =
+      evento.colunas[0].indice;
 
-                html += `<td class="aula-cell ${getCursoInfo(t).cl} ${classesExtras.join(" ")}">
-                            ${val}
-                         </td>`;
-            });
+    if(col !== primeiraColuna){
+      continue;
+    }
+
+    const rowspan =
+      calcularRowspanEventoReal(
+        dia,
+        evento,
+        linhas
+      );
+
+    const contiguas =
+      saoContiguas(
+        evento.colunas
+      );
+
+    const colspan =
+      contiguas
+      ? evento.colunas.length
+      : 1;
+
+    html += `
+      <td
+        rowspan="${rowspan}"
+        colspan="${colspan}"
+        class="evento-bloco"
+      >
+        ${evento.descricao}
+      </td>
+    `;
+
+    continue;
+  }
+
+  const idx =
+    dadosGlobais[0]
+    .indexOf(turma);
+
+  let val =
+    (r[idx] || "")
+    .trim();
+
+  let classesExtras = [];
+
+  const valNorm =
+    normalizarTexto(val);
+
+  regrasDestaque.forEach(regra=>{
+
+    if(regra.match(valNorm)){
+      classesExtras.push(
+        regra.classe
+      );
+    }
+
+  });
+
+  if(
+    val.includes("[+]") ||
+    val.includes("*") ||
+    val.includes("[R]") ||
+    valNorm.includes("INTERVALO")
+  ){
+    classesExtras.push(
+      "marcacao-extra"
+    );
+  }
+
+  html += `
+    <td
+      class="
+        aula-cell
+        ${getCursoInfo(turma).cl}
+        ${classesExtras.join(" ")}
+      "
+    >
+      ${val}
+    </td>
+  `;
+}
 
             html += `</tr>`;
 
