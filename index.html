@@ -29,6 +29,30 @@
   --radius:24px;
 }
 
+  [data-theme="dark"]{
+
+  --bg:#020617;
+  --card:#0f172a;
+  --card-2:#111827;
+
+  --text:#f8fafc;
+  --muted:#94a3b8;
+
+  --border:rgba(255,255,255,.08);
+}
+
+[data-theme="light"]{
+
+  --bg:#f8fafc;
+  --card:#ffffff;
+  --card-2:#f1f5f9;
+
+  --text:#0f172a;
+  --muted:#475569;
+
+  --border:rgba(0,0,0,.08);
+}
+
 /* =========================================
    RESET
 ========================================= */
@@ -1132,6 +1156,8 @@ th.time-col::after{
 placeholder="🔍 Buscar Professor..." onkeyup="filtrarProfessor(); gerarPreviewProfessor();">
 
 <button class="btn-pdf" onclick="exportarPDF()">📄PDF-Semana</button>
+
+<button id="btnTema" class="btn-pdf">🌙 Tema</button>
 </div>
 </div>
 
