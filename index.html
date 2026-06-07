@@ -3029,6 +3029,14 @@ document
 window.addEventListener("beforeunload", () => {
   salvarSnapshotAtual();
 });
+
+  const temaSalvo =
+   localStorage.getItem("tema_ifro") || "dark";
+
+document.documentElement.setAttribute(
+   "data-theme",
+   temaSalvo
+);
   
 window.onload=init;
 
