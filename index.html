@@ -1717,9 +1717,14 @@ if(alteracoes.length){
 
   if (filtradas.length > 0) {
 
-    mostrarAvisoAlteracoesRobusto(filtradas);
+    document.getElementById("conteudoAlteracoes")
+      .innerText = `${filtradas.length} alteração(ões) detectada(s).`;
 
-  } else {
+    document.getElementById("painelAlteracoes")
+      .style.display = "block";
+}
+
+ else {
 
     document.getElementById("painelAlteracoes").style.display = "none";
   }
