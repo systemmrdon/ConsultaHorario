@@ -910,7 +910,7 @@ let alerta = '';
 
 if (
     modalidade === 'INTEGRADO' &&
-    (sem === '22/06/2026' || sem === '29/06/2026' || sem === '30/11/2026')
+    (sem === '22/06/2026' || sem === '29/06/2026' || sem === '30/11/2026' || sem === '07/12/2026')
 ) {
     alerta = `
     <div style="
@@ -928,26 +928,6 @@ if (
     </div>`;
 }
 
-if (
-    modalidade === 'INTEGRADO' &&
-    sem === '07/12/2026
-) {
-    alerta = `
-    <div style="
-        background:#ffebee;
-        border:3px solid #d32f2f;
-        color:#b71c1c;
-        padding:15px;
-        margin-bottom:10px;
-        border-radius:8px;
-        font-weight:bold;
-        text-align:center;
-        font-size:18px;
-    ">
-        ⚠️ ATENÇÃO: ESTA É UMA SEMANA DE RECUPERAÇÃO E EXAME DOS CURSOS TÉCNICOS INTEGRADOS
-    </div>`;
-}
-  
 if (
     modalidade === 'SUPERIOR' &&
     (sem === '29/06/2026' || sem === '07/12/2026')
