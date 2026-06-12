@@ -424,6 +424,9 @@ placeholder="🔍 Buscar Professor..." onkeyup="filtrarProfessor()">
 
 <div class="week-container">
 
+<!-- 🔥 AVISO DE SEMANA ESPECIAL -->
+<div id="alertaSemanaEspecial"></div>
+
 <!-- 🔥 BOTÕES NOVOS -->
 <div id="botoesRelatorio"></div>
 
@@ -897,6 +900,75 @@ function renderizarTabela(){
     const sem = document.getElementById('selectSemana').value;
     const dias = semanasAgrupadas[sem].dias;
     const container = document.getElementById('tabelaHorario');
+
+  // 🔥 AVISOS DE SEMANAS ESPECIAIS
+
+const modalidade =
+    document.getElementById('selectModalidade').value;
+
+let alerta = '';
+
+if (
+    modalidade === 'INTEGRADO' &&
+    (sem === '22/06/2026' || sem === '29/06/2026' || sem === '30/11/2026')
+) {
+    alerta = `
+    <div style="
+        background:#fff3cd;
+        border:3px solid #ff9800;
+        color:#7a4f00;
+        padding:15px;
+        margin-bottom:10px;
+        border-radius:8px;
+        font-weight:bold;
+        text-align:center;
+        font-size:18px;
+    ">
+        ⚠️ ATENÇÃO: ESTA É UMA SEMANA DE RECUPERAÇÃO DOS CURSOS TÉCNICOS INTEGRADOS
+    </div>`;
+}
+
+if (
+    modalidade === 'INTEGRADO' &&
+    sem === '07/12/2026
+) {
+    alerta = `
+    <div style="
+        background:#ffebee;
+        border:3px solid #d32f2f;
+        color:#b71c1c;
+        padding:15px;
+        margin-bottom:10px;
+        border-radius:8px;
+        font-weight:bold;
+        text-align:center;
+        font-size:18px;
+    ">
+        ⚠️ ATENÇÃO: ESTA É UMA SEMANA DE RECUPERAÇÃO E EXAME DOS CURSOS TÉCNICOS INTEGRADOS
+    </div>`;
+}
+  
+if (
+    modalidade === 'SUPERIOR' &&
+    (sem === '29/06/2026' || sem === '07/12/2026')
+) {
+    alerta = `
+    <div style="
+        background:#ffebee;
+        border:3px solid #d32f2f;
+        color:#b71c1c;
+        padding:15px;
+        margin-bottom:10px;
+        border-radius:8px;
+        font-weight:bold;
+        text-align:center;
+        font-size:18px;
+    ">
+        🚨 ATENÇÃO: ESTA É UMA SEMANA DE EXAMES DOS CURSOS SUPERIORES
+    </div>`;
+}
+
+document.getElementById('alertaSemanaEspecial').innerHTML = alerta;
 
     const turmasAtivas = document.getElementById('selectModalidade').value === "SUPERIOR"
         ? getTurmasAtivasNaSemana(dias)
