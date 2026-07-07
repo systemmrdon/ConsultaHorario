@@ -31,7 +31,8 @@ const Relatorio = {
   tipo: "",
   professor: "",
   turma: "",
-  disciplina: ""
+  disciplina: "",
+  periodo: ""
 };
 
 function inicializarRelatorio() {
@@ -41,6 +42,7 @@ function inicializarRelatorio() {
   Relatorio.professor = "";
   Relatorio.turma = "";
   Relatorio.disciplina = "";
+  Relatorio.periodo = "";
 
   // 🔥 LIMPEZA TOTAL DA TELA
   const container = document.getElementById("relatorioContainer");
@@ -156,27 +158,77 @@ function carregarListaTurmasRelatorio() {
 }
 
 function carregarDisciplinasRelatorio() {
-  const select = document.getElementById("selectDisciplinaRelatorio");
 
-  select.innerHTML = '<option value="">Selecione a disciplina</option>';
+    const select =
+        document.getElementById(
+            "selectDisciplinaRelatorio"
+        );
 
-  const set = new Set();
+    select.innerHTML =
+        '<option value="">Selecione a disciplina</option>';
 
-  BASE_GERAL.forEach(a => {
-    if (a.turma === Relatorio.turma) {
-      const disc = extrairDisciplinaRelatorio(a.valor);
-      if (disc) set.add(disc.trim());
-    }
-  });
+    const set = new Set();
 
-  [...set].sort().forEach(d => {
-    select.innerHTML += `<option value="${d}">${d}</option>`;
-  });
+    BASE_GERAL.forEach(a => {
 
-  select.onchange = () => {
-    Relatorio.disciplina = select.value;
-    gerarRelatorio();
-  };
+        if (a.turma !== Relatorio.turma)
+            return;
+
+        const disciplina =
+            extrairDisciplinaRelatorio(a.valor);
+
+        if (!disciplina)
+            return;
+
+        const periodo =
+            obterPeriodoRelatorio(
+                a.data,
+                a.modalidade
+            );
+
+        set.add(
+            `${disciplina}|||${periodo}`
+        );
+
+    });
+
+    [...set]
+        .sort((a, b) => a.localeCompare(b, "pt-BR"))
+        .forEach(item => {
+
+            const [disciplina, periodo] =
+                item.split("|||");
+
+            const texto =
+                periodo === "ANUAL"
+                    ? disciplina
+                    : `${disciplina} - ${periodo}º Semestre`;
+
+            select.innerHTML += `
+                <option value="${item}">
+                    ${texto}
+                </option>
+            `;
+        });
+
+    select.onchange = () => {
+
+        if (!select.value)
+            return;
+
+        const [disciplina, periodo] =
+            select.value.split("|||");
+
+        Relatorio.disciplina =
+            disciplina;
+
+        Relatorio.periodo =
+            periodo;
+
+        gerarRelatorio();
+
+    };
+
 }
 
 function gerarRelatorio() {
@@ -318,7 +370,7 @@ function esconderTodosSelects() {
   document.getElementById("selectDisciplinaRelatorio").style.display = "none";
 }
 
-function classificarTipoRelatorio(valor) {
+function classificarTipoRelatorio(valor, data = null) {
 
   if (!valor) return "NORMAL";
 
@@ -328,6 +380,18 @@ function classificarTipoRelatorio(valor) {
   if (v.includes("[EX]")) return "EXAME";
   if (v.includes("[+]")) return "EXTRA";
   if (v.includes("[R]") || v.includes("[REP]")) return "REPOSIÇÃO";
+
+  // 🔥 verifica sábado
+  if (data) {
+
+    const [d, m, y] = data.split("/");
+
+    const dt = new Date(y, m - 1, d);
+
+    if (dt.getDay() === 6) {
+      return "SÁBADO";
+    }
+  }
 
   return "NORMAL";
 }
@@ -417,14 +481,43 @@ function renderTabelaDetalhadaDisciplina(dados) {
 
   dados.forEach(a => {
 
-    const tr = document.createElement("tr");
+    const tipo = classificarTipoRelatorio(a.valor, a.data);
 
-    tr.innerHTML = `
-      <td>${a.data}</td>
-      <td>${a.horario}</td>
-      <td>${obterProfessorRelatorio(a.valor)}</td>
-      <td>${classificarTipoRelatorio(a.valor)}</td>
-    `;
+let classeTipo = "";
+
+switch (tipo) {
+  case "SÁBADO":
+    classeTipo = "tipo-sabado";
+    break;
+
+  case "RECUPERAÇÃO":
+    classeTipo = "tipo-rec";
+    break;
+
+  case "EXAME":
+    classeTipo = "tipo-ex";
+    break;
+
+  case "REPOSIÇÃO":
+    classeTipo = "tipo-rep";
+    break;
+
+  case "EXTRA":
+    classeTipo = "tipo-extra";
+    break;
+
+  default:
+    classeTipo = "tipo-normal";
+}
+
+const tr = document.createElement("tr");
+
+tr.innerHTML = `
+  <td>${a.data}</td>
+  <td>${a.horario}</td>
+  <td>${obterProfessorRelatorio(a.valor)}</td>
+  <td class="${classeTipo}">${tipo}</td>
+`;
 
     tbody.appendChild(tr);
   });
@@ -433,142 +526,224 @@ function renderTabelaDetalhadaDisciplina(dados) {
 function gerarRelatorioDisciplina() {
 
   const dados = BASE_GERAL.filter(a =>
+
     a.turma === Relatorio.turma &&
+
     obterDisciplinaRelatorio(a.valor) === Relatorio.disciplina &&
-    a.valor && a.valor.trim() !== ""
+
+    obterPeriodoRelatorio(
+      a.data,
+      a.modalidade
+    ) === Relatorio.periodo &&
+
+    a.valor &&
+    a.valor.trim() !== ""
+
   );
 
   const resumo = criarResumoMensal(dados);
 
   renderTabelaResumoRelatorio(resumo);
   renderTabelaDetalhadaRelatorio(dados);
+
 }
 
 function gerarRelatorioProfessor() {
 
-  if (!Relatorio.professor) return;
+    if (!Relatorio.professor) return;
 
-  const profSelecionado = Relatorio.professor.toUpperCase().trim();
+    const profSelecionado =
+        Relatorio.professor.toUpperCase().trim();
 
-  const dados = BASE_GERAL.filter(a => {
+    const dados = BASE_GERAL.filter(a => {
 
-    if (!a.valor) return false;
+        if (!a.valor) return false;
 
-    const prof = obterProfessorRelatorio(a.valor);
+        const prof =
+            obterProfessorRelatorio(a.valor);
 
-    if (!prof) return false;
+        if (!prof) return false;
 
-    return prof.toUpperCase().trim() === profSelecionado;
-  });
+        return (
+            prof.toUpperCase().trim() ===
+            profSelecionado
+        );
 
-  if (dados.length === 0) {
-    console.warn("Nenhum dado encontrado para o professor:", Relatorio.professor);
-    return;
-  }
-
-  const meses = obterMesesRelatorio(dados);
-
-  const mapa = {};
-
-  dados.forEach(a => {
-
-    const disc = obterDisciplinaRelatorio(a.valor);
-    const turma = a.turma;
-
-    if (!disc || !turma) return;
-
-    const tipo = classificarTipoRelatorio(a.valor);
-
-    const [d, m, y] = a.data.split("/");
-    const dt = new Date(y, m - 1, d);
-
-    const mes = dt.toLocaleDateString("pt-BR", {
-      month: "short",
     });
 
-    const key = `${disc}|${turma}`;
+    if (!dados.length)
+        return;
 
-    if (!mapa[key]) {
-      mapa[key] = {
-        disciplina: disc,
-        turma: turma,
-        meses: {},
-        sab: 0,
-        rec: 0,
-        ex: 0,
-        total: 0
-      };
-    }
+    const meses =
+        obterMesesRelatorio(dados);
 
-    if (tipo === "RECUPERAÇÃO") {
-      mapa[key].rec++;
-      return;
-    }
+    const mapa = {};
 
-    if (tipo === "EXAME") {
-      mapa[key].ex++;
-      return;
-    }
-
-    mapa[key].meses[mes] = (mapa[key].meses[mes] || 0) + 1;
-    mapa[key].total++;
-
-    if (dt.getDay() === 6) mapa[key].sab++;
-  });
-
-  const linhas =
-    Object.values(mapa)
-    .sort((a, b) => {
+    dados.forEach(a => {
 
         const disc =
-            a.disciplina.localeCompare(
-                b.disciplina,
+            obterDisciplinaRelatorio(a.valor);
+
+        const turma =
+            a.turma;
+
+        if (!disc || !turma)
+            return;
+
+        const periodo =
+            obterPeriodoRelatorio(
+                a.data,
+                a.modalidade
+            );
+
+        const tipo =
+            classificarTipoRelatorio(a.valor);
+
+        const [d,m,y] =
+            a.data.split("/");
+
+        const dt =
+            new Date(y,m-1,d);
+
+        const mes =
+            dt.toLocaleDateString(
+                "pt-BR",
+                {
+                    month:"short"
+                }
+            );
+
+        const key =
+            `${disc}|${turma}|${periodo}`;
+
+        if(!mapa[key]){
+
+            mapa[key]={
+
+                disciplina:disc,
+
+                turma:turma,
+
+                periodo:periodo,
+
+                meses:{},
+
+                sab:0,
+
+                rec:0,
+
+                ex:0,
+
+                total:0
+
+            };
+
+        }
+
+        if(tipo==="RECUPERAÇÃO"){
+
+            mapa[key].rec++;
+
+            return;
+
+        }
+
+        if(tipo==="EXAME"){
+
+            mapa[key].ex++;
+
+            return;
+
+        }
+
+        mapa[key].meses[mes] =
+            (mapa[key].meses[mes]||0)+1;
+
+        mapa[key].total++;
+
+        if(dt.getDay()===6)
+            mapa[key].sab++;
+
+    });
+
+    const linhas =
+        Object.values(mapa)
+        .sort((a,b)=>{
+
+            let cmp =
+                a.disciplina.localeCompare(
+                    b.disciplina,
+                    "pt-BR"
+                );
+
+            if(cmp!==0)
+                return cmp;
+
+            cmp =
+                a.turma.localeCompare(
+                    b.turma,
+                    "pt-BR"
+                );
+
+            if(cmp!==0)
+                return cmp;
+
+            return a.periodo.localeCompare(
+                b.periodo,
                 "pt-BR"
             );
 
-        if (disc !== 0)
-            return disc;
+        });
 
-        return a.turma.localeCompare(
-            b.turma,
-            "pt-BR"
+    const tabela =
+        document.getElementById(
+            "tabelaResumoRelatorio"
         );
+
+    const thead =
+        tabela.querySelector("thead");
+
+    const tbody =
+        tabela.querySelector("tbody");
+
+    thead.innerHTML=`
+<tr>
+<th class="col-texto">Disciplina</th>
+<th class="col-texto">Turma</th>
+<th class="col-texto">Período</th>
+${meses.map(m=>`<th class="col-mes">${m}</th>`).join("")}
+<th class="col-mes">SÁB</th>
+<th class="col-mes">REC</th>
+<th class="col-mes">EX</th>
+<th class="col-mes">TOTAL</th>
+</tr>`;
+
+    tbody.innerHTML="";
+
+    linhas.forEach(l=>{
+
+        const periodoTexto =
+            l.periodo==="ANUAL"
+            ? "Anual"
+            : `${l.periodo}º Semestre`;
+
+        const tr =
+            document.createElement("tr");
+
+        tr.innerHTML=`
+<td class="col-texto">${l.disciplina}</td>
+<td class="col-texto">${l.turma}</td>
+<td class="col-texto">${periodoTexto}</td>
+${meses.map(m=>`<td class="col-mes">${l.meses[m]||0}</td>`).join("")}
+<td class="col-mes">${l.sab}</td>
+<td class="col-mes">${l.rec}</td>
+<td class="col-mes">${l.ex}</td>
+<td class="col-mes">${l.total}</td>`;
+
+        tbody.appendChild(tr);
+
     });
 
-  const tabela = document.getElementById("tabelaResumoRelatorio");
-  const thead = tabela.querySelector("thead");
-  const tbody = tabela.querySelector("tbody");
-
-  thead.innerHTML = `
-  <tr>
-    <th class="col-texto">Disciplina</th>
-    <th class="col-texto">Turma</th>
-    ${meses.map(m => `<th class="col-mes">${m}</th>`).join("")}
-    <th class="col-mes">SÁB</th>
-    <th class="col-mes">REC</th>
-    <th class="col-mes">EX</th>
-    <th class="col-mes">TOTAL</th>
-  </tr>
-`;
-
-  tbody.innerHTML = "";
-
-linhas.forEach(l => {
-
-  const tr = document.createElement("tr");
-
-  tr.innerHTML = `
-    <td class="col-texto">${l.disciplina}</td>
-    <td class="col-texto">${l.turma}</td>
-    ${meses.map(m => `<td class="col-mes">${l.meses[m] || 0}</td>`).join("")}
-    <td class="col-mes">${l.sab}</td>
-    <td class="col-mes">${l.rec}</td>
-    <td class="col-mes">${l.ex}</td>
-    <td class="col-mes">${l.total}</td>
-  `;
-
-  tbody.appendChild(tr);
-});
 }
 
 function gerarRelatorioTurma() {
@@ -588,8 +763,14 @@ function gerarRelatorioTurma() {
     const disc = obterDisciplinaRelatorio(a.valor);
     const prof = obterProfessorRelatorio(a.valor);
 
-    // 🔥 FILTRO ANTI-LINHA VAZIA (CORREÇÃO PRINCIPAL)
+    // 🔥 FILTRO ANTI-LINHA VAZIA
     if (!disc || !prof) return;
+
+    // 🔥 NOVO: identifica o período
+    const periodo = obterPeriodoRelatorio(
+      a.data,
+      a.modalidade
+    );
 
     const tipo = classificarTipoRelatorio(a.valor);
 
@@ -600,12 +781,14 @@ function gerarRelatorioTurma() {
       month: "short",
     });
 
-    const key = `${disc}|${prof}`;
+    // 🔥 AGORA A CHAVE CONSIDERA O PERÍODO
+    const key = `${disc}|${prof}|${periodo}`;
 
     if (!mapa[key]) {
       mapa[key] = {
         disciplina: disc,
         professor: prof,
+        periodo: periodo,
         meses: {},
         sab: 0,
         rec: 0,
@@ -624,44 +807,64 @@ function gerarRelatorioTurma() {
       return;
     }
 
-    mapa[key].meses[mes] = (mapa[key].meses[mes] || 0) + 1;
+    mapa[key].meses[mes] =
+      (mapa[key].meses[mes] || 0) + 1;
+
     mapa[key].total++;
 
-    if (dt.getDay() === 6) mapa[key].sab++;
+    if (dt.getDay() === 6)
+      mapa[key].sab++;
+
   });
 
   const linhas =
     Object.values(mapa)
-    .sort((a, b) => {
+      .sort((a, b) => {
 
         const disc =
-            a.disciplina.localeCompare(
-                b.disciplina,
-                "pt-BR"
-            );
+          a.disciplina.localeCompare(
+            b.disciplina,
+            "pt-BR"
+          );
 
         if (disc !== 0)
-            return disc;
+          return disc;
 
-        return a.professor.localeCompare(
+        const prof =
+          a.professor.localeCompare(
             b.professor,
             "pt-BR"
-        );
-    });
+          );
 
-  const tabela = document.getElementById("tabelaResumoRelatorio");
-  const thead = tabela.querySelector("thead");
-  const tbody = tabela.querySelector("tbody");
+        if (prof !== 0)
+          return prof;
+
+        return a.periodo.localeCompare(
+          b.periodo,
+          "pt-BR"
+        );
+
+      });
+
+  const tabela =
+    document.getElementById("tabelaResumoRelatorio");
+
+  const thead =
+    tabela.querySelector("thead");
+
+  const tbody =
+    tabela.querySelector("tbody");
 
   thead.innerHTML = `
     <tr>
       <th class="col-texto">Disciplina</th>
-<th class="col-texto">Professor</th>
-${meses.map(m => `<th class="col-mes">${m}</th>`).join("")}
-<th class="col-mes">SÁB</th>
-<th class="col-mes">REC</th>
-<th class="col-mes">EX</th>
-<th class="col-mes">TOTAL</th>
+      <th class="col-texto">Professor</th>
+      <th class="col-texto">Período</th>
+      ${meses.map(m => `<th class="col-mes">${m}</th>`).join("")}
+      <th class="col-mes">SÁB</th>
+      <th class="col-mes">REC</th>
+      <th class="col-mes">EX</th>
+      <th class="col-mes">TOTAL</th>
     </tr>
   `;
 
@@ -669,20 +872,29 @@ ${meses.map(m => `<th class="col-mes">${m}</th>`).join("")}
 
   linhas.forEach(l => {
 
-    const tr = document.createElement("tr");
+    const periodoTexto =
+      l.periodo === "ANUAL"
+        ? "Anual"
+        : `${l.periodo}º Semestre`;
+
+    const tr =
+      document.createElement("tr");
 
     tr.innerHTML = `
-     <td class="col-texto">${l.disciplina}</td>
-<td class="col-texto">${l.professor}</td>
-${meses.map(m => `<td class="col-mes">${l.meses[m] || 0}</td>`).join("")}
-<td class="col-mes">${l.sab}</td>
-<td class="col-mes">${l.rec}</td>
-<td class="col-mes">${l.ex}</td>
-<td class="col-mes">${l.total}</td>
+      <td class="col-texto">${l.disciplina}</td>
+      <td class="col-texto">${l.professor}</td>
+      <td class="col-texto">${periodoTexto}</td>
+      ${meses.map(m => `<td class="col-mes">${l.meses[m] || 0}</td>`).join("")}
+      <td class="col-mes">${l.sab}</td>
+      <td class="col-mes">${l.rec}</td>
+      <td class="col-mes">${l.ex}</td>
+      <td class="col-mes">${l.total}</td>
     `;
 
     tbody.appendChild(tr);
+
   });
+
 }
 
 function renderTabelaResumoRelatorio(resumoObj) {
@@ -736,14 +948,43 @@ function renderTabelaDetalhadaRelatorio(dados) {
 
   dados.forEach(a => {
 
-    const tr = document.createElement("tr");
+    const tipo = classificarTipoRelatorio(a.valor, a.data);
 
-    tr.innerHTML = `
-      <td>${a.data}</td>
-      <td>${a.horario}</td>
-      <td>${obterProfessorRelatorio(a.valor)}</td>
-      <td>${classificarTipoRelatorio(a.valor)}</td>
-    `;
+let classeTipo = "";
+
+switch (tipo) {
+  case "SÁBADO":
+    classeTipo = "tipo-sabado";
+    break;
+
+  case "RECUPERAÇÃO":
+    classeTipo = "tipo-rec";
+    break;
+
+  case "EXAME":
+    classeTipo = "tipo-ex";
+    break;
+
+  case "REPOSIÇÃO":
+    classeTipo = "tipo-rep";
+    break;
+
+  case "EXTRA":
+    classeTipo = "tipo-extra";
+    break;
+
+  default:
+    classeTipo = "tipo-normal";
+}
+
+const tr = document.createElement("tr");
+
+tr.innerHTML = `
+  <td>${a.data}</td>
+  <td>${a.horario}</td>
+  <td>${obterProfessorRelatorio(a.valor)}</td>
+  <td class="${classeTipo}">${tipo}</td>
+`;
 
     tbody.appendChild(tr);
   });
@@ -1099,12 +1340,24 @@ function exportarRelatorioDisciplinaPDF() {
             { align: "center" }
         );
 
-        pdf.text(
-            `Disciplina: ${Relatorio.disciplina}`,
-            pageWidth / 2,
-            28,
-            { align: "center" }
-        );
+        const descricaoPeriodo =
+    Relatorio.periodo === "ANUAL"
+        ? "Anual"
+        : `${Relatorio.periodo}º Semestre`;
+
+pdf.text(
+    `Disciplina: ${Relatorio.disciplina}`,
+    pageWidth / 2,
+    28,
+    { align: "center" }
+);
+
+pdf.text(
+    `Período Letivo: ${descricaoPeriodo}`,
+    pageWidth / 2,
+    32,
+    { align: "center" }
+);
     }
 
     const tabelaResumo =
@@ -1141,7 +1394,7 @@ function exportarRelatorioDisciplinaPDF() {
     pdf.text(
     "RESUMO MENSAL",
     pageWidth / 2,
-    38,
+    42,
     { align: "center" }
 );
   
@@ -1153,7 +1406,7 @@ function exportarRelatorioDisciplinaPDF() {
 
     tableWidth: 'auto',
 
-        startY: 42,
+        startY: 46,
 
         theme: "grid",
 
@@ -1236,10 +1489,10 @@ function exportarRelatorioDisciplinaPDF() {
 
         columnStyles: {
 
-            0: { cellWidth: 28 },
-            1: { cellWidth: 28 },
-            2: { cellWidth: 85 },
-            3: { cellWidth: 35 }
+            0: { cellWidth: 30 },
+            1: { cellWidth: 30 },
+            2: { cellWidth: 90 },
+            3: { cellWidth: 36 }
 
         },
 
