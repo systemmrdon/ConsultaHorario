@@ -191,28 +191,39 @@ function carregarListaTurmas() {
 
         if (!horario) return;
 
-        const disciplina =
-            aula.disciplina || "";
+        const texto = (aula.valor || "").trim();
+        if (!texto) return;
 
-        const professor =
-            aula.professor || "";
+const regrasDestaque = [
+    { match: v => v.includes("RESERVA ENSINO"), classe: "reserva-ensino" },
+    { match: v => v.includes("PPS/ATENDIMENTO"), classe: "pps" },
+    { match: v => v.includes("ATENDIMENTO INDIVIDUAL"), classe: "atendimento-individual" },
+    { match: v => v.includes("ESTUDOS INDIVIDUAIS"), classe: "estudos" },
+    { match: v => v.includes("REUNIAO DE SERVIDORES"), classe: "reuniao" },
+    { match: v => v.includes("CAED") || v.includes("PRE-CONSELHO"), classe: "caed" },
+    { match: v => v.includes("_REP -"), classe: "reposicao" }
+];
 
-        grade[horario][diaSemana].push(`
+const regra = regrasDestaque.find(r =>
+    r.match(texto.toUpperCase())
+);
 
-            <div style="
-                margin-bottom:4px;
-                padding:3px;
-                border-left:3px solid #1565c0;
-            ">
+const classe = regra?.classe || "sem-estilo";
 
-                <b>${disciplina}</b><br>
+grade[horario][diaSemana].push(`
 
-                ${professor}
+<div class="${classe}" style="
+    margin-bottom:4px;
+    padding:4px;
+    border-left:4px solid #1565c0;
+    border-radius:4px;
+    white-space:pre-line;
+">
+    ${texto}
+</div>
 
-            </div>
-
-        `);
-
+`);
+      
     });
 
     return {
@@ -268,22 +279,22 @@ function carregarListaTurmas() {
             semana
         );
 
-    const totalAulas =
-        aulas.length;
+    const totalAulas = aulas.filter(a =>
+    a.professor &&
+    a.professor.trim() !== ""
+).length;
 
-    const totalProfessores =
-        new Set(
-            aulas.map(
-                a => a.professor
-            )
-        ).size;
+const totalProfessores = new Set(
+    aulas
+        .filter(a => a.professor && a.professor.trim() !== "")
+        .map(a => a.professor)
+).size;
 
-    const totalDias =
-        new Set(
-            aulas.map(
-                a => a.data
-            )
-        ).size;
+const totalDias = new Set(
+    aulas
+        .filter(a => a.professor && a.professor.trim() !== "")
+        .map(a => a.data)
+).size;
 
     let html = `
 
@@ -512,31 +523,30 @@ function carregarListaTurmas() {
 
     aulas.forEach(aula => {
 
-        const [d,m,a] =
-            aula.data.split("/");
+    // Não contabiliza intervalos
+    if ((aula.valor || "").trim().toUpperCase() === "INTERVALO") {
+        return;
+    }
 
-        const dt =
-            new Date(a,m-1,d);
+    const [d,m,a] = aula.data.split("/");
 
-        const dia =
-            [
-                "DOMINGO",
-                "SEGUNDA",
-                "TERÇA",
-                "QUARTA",
-                "QUINTA",
-                "SEXTA",
-                "SÁBADO"
-            ][dt.getDay()];
+    const dt = new Date(a,m-1,d);
 
-        if (
-            aulasPorDia[dia]
-            !== undefined
-        ) {
-            aulasPorDia[dia]++;
-        }
+    const dia = [
+        "DOMINGO",
+        "SEGUNDA",
+        "TERÇA",
+        "QUARTA",
+        "QUINTA",
+        "SEXTA",
+        "SÁBADO"
+    ][dt.getDay()];
 
-    });
+    if (aulasPorDia[dia] !== undefined) {
+        aulasPorDia[dia]++;
+    }
+
+});
 
     html += `
     <tr style="
