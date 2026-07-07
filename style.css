@@ -110,15 +110,13 @@
 
 .header-sticky{
   position: sticky;
-  top: 70px;
-
-  z-index: 9999;
-
+  top: 55px;
+  z-index: 4999;
   background: var(--bg);
-
   padding: 10px 0;
-
   width: 100%;
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 4px 10px rgba(0,0,0,.15);
 }
 
 /* CARD DOS CONTROLES */
@@ -356,6 +354,11 @@ tr.linha-vazia td{
 
 .reposicao{
   color:#0b3d91;
+  font-weight:bold;
+}
+
+.atendimento{
+  color:#1e7e34;
   font-weight:bold;
 }
 
@@ -915,9 +918,12 @@ body {
   display: flex;
   gap: 8px;
   padding: 10px;
-  background:var(--surface);
+  background: var(--surface);
   border-bottom: 1px solid #e5e7eb;
   overflow-x: auto;
+  position: sticky;
+  top: 0;
+  z-index: 5000;
 }
 
 .tab {
@@ -1195,4 +1201,118 @@ body {
   font-weight: 700;
   color: var(--text-primary);
   letter-spacing: 1px;
+}
+
+/* =========================
+   LABORATÓRIOS (VISUAL PRÓPRIO)
+========================= */
+
+#tabelaLaboratorio table{
+  font-size: 13px;
+}
+
+#tabelaLaboratorio th{
+  background: #1f2937;
+  color: #fff;
+  font-size: 14px;
+  padding: 10px;
+}
+
+#tabelaLaboratorio td{
+  padding: 10px;
+  font-size: 12px;
+  vertical-align: middle;
+  height: 70px;
+}
+
+/* LIVRE */
+#tabelaLaboratorio .livre{
+  background: #e8f5e9;
+  color: #16a34a;
+  font-weight: bold;
+}
+
+/* CONFLITO */
+#tabelaLaboratorio .conflito{
+  background: #fee2e2;
+  color: #991b1b;
+  font-weight: bold;
+}
+
+/* MODALIDADE */
+.lab-modalidade{
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.lab-integrado{
+  background: #e8f5e9;
+  color: #166534;
+}
+
+.lab-superior{
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.intervalo{
+    background: var(--intervalo) !important;
+    font-weight: bold;
+    text-align: center;
+    font-size: 10px;
+}
+
+/* ===================================== */
+/* FICHA DA TURMA */
+/* ===================================== */
+
+.registro-turma{
+  margin-bottom:2px;
+  padding:2px 4px;
+  border-left:3px solid #1565c0;
+  border-radius:3px;
+  line-height:1.15;
+}
+
+.registro-turma.reserva-ensino{
+  color:#fbc02d;
+  font-weight:bold;
+}
+
+.registro-turma.pps{
+  color:#0b3d91;
+  font-weight:bold;
+}
+
+.registro-turma.estudos{
+  color:#1e7e34;
+  font-weight:bold;
+}
+
+.registro-turma.reuniao{
+  color:#fb8c00;
+  font-weight:bold;
+}
+
+.registro-turma.caed{
+  background:var(--caed);
+}
+
+.registro-turma.reposicao{
+  color:#0b3d91;
+  font-weight:bold;
+}
+
+.registro-turma.atendimento-individual{
+  color:#0b3d91;
+  font-weight:bold;
+}
+
+.sem-estilo{
+  color:var(--text);
+  background:transparent;
 }
