@@ -85,7 +85,7 @@ carregarListaTurmas();
 carregarSemanasTurma();
 
 gerarDashboard();
-
+renderizarTabela();
 
 esconderLoaderAbas();
 
